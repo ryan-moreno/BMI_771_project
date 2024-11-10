@@ -56,7 +56,7 @@ def encode_text_and_compute_similarity(text_prompts, image_encoding, processor, 
         text_embeddings = model.get_text_features(**inputs)
     
     # Compute cosine similarity between text and image embeddings
-    cosine_similarities = F.cosine_similarity(text_embeddings, image_encoding.repeat((text_embeddings.shape , 1)))
+    cosine_similarities = F.cosine_similarity(text_embeddings, image_encoding.repeat(text_embeddings.shape[0:1] + (1,)))
     return cosine_similarities
 
 def read_text_prompts(test=1):
