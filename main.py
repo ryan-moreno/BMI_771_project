@@ -19,7 +19,7 @@ def main_func():
     args = parser.parse_args()
     
     fun_handles = {
-        'gen_images': gen_images,
+        
     }
     run_tests(args.function_name, fun_handles)
 
@@ -54,9 +54,18 @@ def encode_text_and_compute_similarity(text_prompts, image_encoding, processor, 
     inputs = inputs.to(device)
     with torch.no_grad():
         text_embeddings = model.get_text_features(**inputs)
+        
+    #print("Text Embeddings Shape:", text_embeddings.shape)
+    #print("Image Encoding Shape:", image_encoding.shape)
+    #print("Text Embeddings:", text_embeddings)
+    #print("Image Encoding:", image_encoding)
+    
+    #normalize the image encoding & text embeddings
+    image_encoding_norm = F.normalize(image_encoding, p=2, dim=-1)
+    text_embeddings_norm = F.normalize(text_embeddings, p=2, dim=-1)
     
     # Compute cosine similarity between text and image embeddings
-    cosine_similarities = F.cosine_similarity(text_embeddings, image_encoding.repeat(text_embeddings.shape[0:1] + (1,)))
+    cosine_similarities = F.cosine_similarity(text_embeddings_norm, image_encoding_norm.repeat(text_embeddings_norm.shape[0:1] + (1,)))
     return cosine_similarities
 
 def read_text_prompts(test=1):
@@ -68,6 +77,8 @@ def read_text_prompts(test=1):
         file_name = os.path.join('./output/text_prompts/test_3', 'text_prompts.txt')
     elif test == 4:
         file_name = os.path.join('./output/text_prompts/test_4', 'text_prompts.txt')
+    elif test == 5:
+        file_name = os.path.join('./output/text_prompts/test_5', 'text_prompts.txt')
     else:
         raise ValueError("Invalid test number.")
     text_prompts = []
@@ -120,6 +131,10 @@ def generate_text_prompts(test=1):
                 percentage = round(tentative_associations[j] , ndigits=2)
                 text_prompts.append(f"The color of the image is associated with the concept {key_words[i]} with an association strength of {percentage} out of 1.")
         folder_to_save = './output/text_prompts/test_4'
+    elif test == 5:
+        # this test is for debugging purposes I will use a color in the sentence to see if it leads to a higher similarity score
+        text_prompts.append(f"The color of the image is yellow.")
+        folder_to_save = './output/text_prompts/test_5'
     else:
         raise ValueError("Invalid test number.")
     if not os.path.exists(folder_to_save):
@@ -153,8 +168,8 @@ def perform_test(test_num=1, which_model='ViT-B/32', images_path='./output/image
         image_name = image.split('.')[0]
         image_encoding = encode_image(image_path, processor=processor, model=model) 
         cosine_similarities = encode_text_and_compute_similarity(text_prompts, image_encoding, processor=processor, model=model)
-        print(f"Image: {image}")
-        print("Cosine Similarities:", cosine_similarities)
+        #print(f"Image: {image}")
+        #print("Cosine Similarities:", cosine_similarities)
         # lets save the cosine similarities to a file in ./output/cosine_similarities/test_{test_num}_scores/{image_name}/similarity_scores.txt
         folder_to_save = f'./output/cosine_similarities/test_{test_num}_scores/{image_name}'
         if not os.path.exists(folder_to_save):
@@ -166,8 +181,8 @@ def perform_test(test_num=1, which_model='ViT-B/32', images_path='./output/image
         print("Cosine Similarities saved to file.")
 
 if __name__ == '__main__':
-    perform_test(test_num=1)
-    #generate_text_prompts(test=4)
+    perform_test(test_num=5)
+    #generate_text_prompts(test=5)
     #gen_imgs()
     #get_words_and_associations()
     #check_file_colors()

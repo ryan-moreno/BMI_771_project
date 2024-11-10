@@ -73,3 +73,8 @@ def get_words_and_associations(file):
     words = associations_df.iloc[:, 0].values
     associations = associations_df.iloc[:, 1:].values
     return words, associations
+
+def compare_top_5_similarities(gt_similarities, predicted_similarities):
+    # Compare the top 5 similarities
+    #waiting for df's to be built to handle formatting of the output
+    raise NotImplementedError
