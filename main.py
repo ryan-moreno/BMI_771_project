@@ -305,11 +305,6 @@ def evaluation_metrics(prompt_style=1, which_model="ViT-B/32"):
     gt = get_words_and_associations(as_data_frame=True)
     pred = get_predictions(prompt_style, which_model)
     
-    print(gt.head())
-    print(pred.head())
-    print("keys", gt.keys())
-    print("keys", pred.keys())
-    
     pearson_correlations = []
     total_variances = []
     earth_movers_distances = []
@@ -334,8 +329,8 @@ def evaluation_metrics(prompt_style=1, which_model="ViT-B/32"):
         
         # Entropy Distance ED
         # ED(pˆ,r) = abs( sum (pˆi log ˆpi) − sum (ri logri) ) 
-        gt_log_values = np.where(gt_values > 0, gt_values * np.log(gt_values), 0)
-        pred_log_values = np.where(pred_values > 0, pred_values * np.log(pred_values), 0)        
+        gt_log_values = np.array([v * np.log(v) if v > 0 else 0 for v in gt_values])
+        pred_log_values = np.array([v * np.log(v) if v > 0 else 0 for v in pred_values])
         ed = np.abs(gt_log_values.sum() - pred_log_values.sum())
         entropy_distances.append(ed)
         
@@ -351,10 +346,11 @@ def evaluation_metrics(prompt_style=1, which_model="ViT-B/32"):
     evaluation_metrics_df = pd.DataFrame()
     evaluation_metrics_df['word'] = gt.index
     evaluation_metrics_df['PCC'] = pearson_correlations
+    evaluation_metrics_df['SRC'] = spearman_rank_correlations
     evaluation_metrics_df['TV'] = total_variances
     evaluation_metrics_df['EMD'] = earth_movers_distances
     evaluation_metrics_df['ED'] = entropy_distances
-    evaluation_metrics_df['SRC'] = spearman_rank_correlations
+    
     
     # Save the evaluation metrics to a file
     # Ensure the directory exists
@@ -362,13 +358,14 @@ def evaluation_metrics(prompt_style=1, which_model="ViT-B/32"):
     
     file_name = os.path.join(output_folder, "evaluation_metrics_df.txt")
     evaluation_metrics_df.to_csv(file_name, index=True)
+    print("Evaluation Metrics saved to file.")
     pass
 
 
 if __name__ == "__main__":
-    #evaluation_metrics(prompt_style=1, which_model="ViT-B/32")
+    evaluation_metrics(prompt_style=1, which_model="ViT-B/32")
     #evaluate_model(prompt_style=1, which_model="ViT-B/32")
-    perform_test(test_num=3, which_model="ViT-B/32")
+    #perform_test(test_num=3, which_model="ViT-B/32")
     #generate_text_prompts(test=4)
     #gen_imgs()
     # get_words_and_associations()
