@@ -55,7 +55,8 @@ def gen_rgb_images_from_cielab(lab_csv, output_dir):
             hex = rgb_to_hex(r, g, b)
             print("rgb: ", rgb)
             print("hex: ", hex)
-            img = Image.new("RGB", (64, 64), (int(r * 255), int(g * 255), int(b * 255)))
+            # evaluating if the image size has an impact, initially set to 64x64 now setting to 224x224
+            img = Image.new("RGB", (224, 224), (int(r * 255), int(g * 255), int(b * 255)))
             img.save(os.path.join(output_dir, f"{file_name}.png"))
             file_name += 1
 
@@ -78,3 +79,39 @@ def compare_top_5_similarities(gt_similarities, predicted_similarities):
     # Compare the top 5 similarities
     #waiting for df's to be built to handle formatting of the output
     raise NotImplementedError
+
+def gen_pearson_correlation(gt, predicted):
+    """
+    Generates the pearson correlation matrix
+
+    Outputs:
+        output: The pearson correlation matrix
+    """
+    pass
+
+def gen_TV(gt, predicted):
+    """
+    Generates the TV matrix
+
+    Outputs:
+        output: The TV matrix
+    """
+    pass
+
+def gen_EMD(gt, predicted):
+    """
+    Generates the EMD matrix
+
+    Outputs:
+        output: The EMD matrix
+    """
+    pass
+
+def gen_entropy_distance(gt, predicted):
+    """
+    Generates the entropy distance matrix
+
+    Outputs:
+        output: The entropy distance matrix
+    """
+    pass

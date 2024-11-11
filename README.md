@@ -3,7 +3,7 @@ BMI 771 project
 
 # environment requirements
 Must install:
-- transformers, torch, pillow
+- transformers, torch, pillow, scipy
 
 # Memory requirements 
 Rough Estimates for Memory Requirements (per model, for a batch size of 1, on a CPU):
