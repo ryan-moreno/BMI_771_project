@@ -8,6 +8,7 @@ from PIL import Image
 import torch.nn.functional as F
 import torch
 from transformers import CLIPProcessor, CLIPModel
+import matplotlib.pyplot as plt
 
 NUM_COLOR_PATCHES = 71
 
@@ -25,9 +26,7 @@ def main_func():
     )
     args = parser.parse_args()
 
-    fun_handles = {
-        
-    }
+    fun_handles = {}
     run_tests(args.function_name, fun_handles)
 
 
@@ -82,9 +81,9 @@ def read_text_prompts(test=1):
     elif test == 3:
         file_name = os.path.join("./output/text_prompts/test_3", "text_prompts.txt")
     elif test == 4:
-        file_name = os.path.join('./output/text_prompts/test_4', 'text_prompts.txt')
+        file_name = os.path.join("./output/text_prompts/test_4", "text_prompts.txt")
     elif test == 5:
-        file_name = os.path.join('./output/text_prompts/test_5', 'text_prompts.txt')
+        file_name = os.path.join("./output/text_prompts/test_5", "text_prompts.txt")
     else:
         raise ValueError("Invalid test number.")
     text_prompts = []
@@ -159,13 +158,15 @@ def generate_text_prompts(test=1):
         print(tentative_associations)
         for i in range(len(key_words)):
             for j in range(len(tentative_associations)):
-                percentage = round(tentative_associations[j] , ndigits=2)
-                text_prompts.append(f"The color of the image is associated with the concept {key_words[i]} with an association strength of {percentage} out of 1.")
-        folder_to_save = './output/text_prompts/test_4'
+                percentage = round(tentative_associations[j], ndigits=2)
+                text_prompts.append(
+                    f"The color of the image is associated with the concept {key_words[i]} with an association strength of {percentage} out of 1."
+                )
+        folder_to_save = "./output/text_prompts/test_4"
     elif test == 5:
         # this test is for debugging purposes I will use a color in the sentence to see if it leads to a higher similarity score
         text_prompts.append(f"The color of the image is yellow.")
-        folder_to_save = './output/text_prompts/test_5'
+        folder_to_save = "./output/text_prompts/test_5"
     else:
         raise ValueError("Invalid test number.")
     if not os.path.exists(folder_to_save):
@@ -237,7 +238,74 @@ def get_predictions(prompt_style=1):
     cosine_similarity_folder = f"output/cosine_similarities/test_{prompt_style}_scores"
     file_name = os.path.join(cosine_similarity_folder, "similarity_scores_df.txt")
     pred = pd.read_csv(file_name, index_col=0)
+    pred.columns = pred.columns.astype(int)
     return pred
+
+
+def compare_rankings_plot(ranking_df, plot_path_prefix, word):
+    """
+    Plots the comparison of the rankings of the ground truth and predicted rankings.
+    Creates two plots: one ordered by GT and one ordered by Pred
+
+    Inputs:
+        ranking_df: The data frame containing the rankings (columns of "color_index", "gt_ranking", and "pred_ranking")
+        plot_path: Path to save the rankings plot to
+    """
+    colors = pd.read_csv("data/UW_71_color_dict.csv", index_col=0)
+    ranking_df = ranking_df.merge(colors, left_on="color_index", right_on="index")
+
+    ## Plot, ordered by GT
+    bar_heights = NUM_COLOR_PATCHES - ranking_df["pred_ranking"].astype(int)
+    plt.figure(figsize=(8, 8))
+    plt.bar(
+        ranking_df["gt_ranking"].astype(int),
+        bar_heights,
+        bottom=ranking_df["pred_ranking"].astype(int),
+        color=ranking_df["hex"],
+        label="Rank Comparison",
+    )
+    plt.plot(
+        [1, 71],
+        [1, 71],
+        color="black",
+        linestyle="--",
+        label="Perfect Match (Diagonal)",
+    )
+    plt.gca().invert_xaxis()
+    plt.gca().invert_yaxis()
+    plt.xlabel("Ground Truth Rankings")
+    plt.ylabel("Predicted Rankings")
+    plt.title(f"Comparison of rankings for {word} (colored by ground truth rankings)")
+    plt.legend()
+    plt.savefig(f"{plot_path_prefix}_by_gt.png", format="png", dpi=300)
+    plt.close()
+
+    ## Plot, ordered by Pred
+    bar_lengths = NUM_COLOR_PATCHES - ranking_df["gt_ranking"].astype(int)
+    plt.figure(figsize=(8, 8))
+    plt.barh(
+        ranking_df["pred_ranking"].astype(int),
+        bar_lengths,
+        left=ranking_df["gt_ranking"].astype(int),
+        color=ranking_df["hex"],
+        label="Rank Comparison",
+    )
+    plt.plot(
+        [1, 71],
+        [1, 71],
+        color="black",
+        linestyle="--",
+        label="Perfect Match (Diagonal)",
+    )
+
+    plt.gca().invert_xaxis()
+    plt.gca().invert_yaxis()
+    plt.xlabel("Ground Truth Rankings")
+    plt.ylabel("Predicted Rankings")
+    plt.title(f"Comparison of rankings for {word} (colored by predicted rankings)")
+    plt.legend()
+    plt.savefig(f"{plot_path_prefix}_by_pred.png", format="png", dpi=300)
+    plt.close()
 
 
 def evaluate_model(prompt_style=1):
@@ -247,35 +315,35 @@ def evaluate_model(prompt_style=1):
     Inputs:
         prompt_style: The prompt style to evaluate
     """
+
+    eval_folder = f"./output/evaluation/test_{prompt_style}_eval/"
+    if not os.path.exists(eval_folder):
+        os.makedirs(eval_folder)
+
     key_words, _ = get_words_and_associations(as_data_frame=False)
     gt = get_words_and_associations(as_data_frame=True)
     pred = get_predictions(prompt_style)
 
     for key_word in key_words:
+        # Get the rankings of the ground truth and predicted associations
         gt_rankings = gt.loc[key_word].sort_values(ascending=False)
         pred_rankings = pred.loc[key_word].sort_values(ascending=False)
-        ranking_df = pd.DataFrame(columns=["color_index", "gt_ranking", "pred_ranking"])
-        ranking_df["color_index"] = range(1, NUM_COLOR_PATCHES + 1)
-        ranking_df["gt_ranking"] = gt_rankings.index
-        ranking_df["pred_ranking"] = pred_rankings.index
-        top_10_overlap = len(
-            set(gt_rankings.index[:10]).intersection(pred_rankings.index[:10])
+        ranking_df = pd.DataFrame(
+            {
+                "color_index": range(1, NUM_COLOR_PATCHES + 1),
+                "gt_ranking": [
+                    gt_rankings.index.get_loc(color_index) + 1
+                    for color_index in range(1, NUM_COLOR_PATCHES + 1)
+                ],
+                "pred_ranking": [
+                    pred_rankings.index.get_loc(color_index) + 1
+                    for color_index in range(1, NUM_COLOR_PATCHES + 1)
+                ],
+            }
         )
-        print(f"Top 10 overlap for {key_word}: {top_10_overlap}")
-    print(gt)
-    print(pred)
-    pass
 
-
-def plot_color_rankings(sorted_colors_indices):
-    """
-    Plots the color rankings
-
-    Inputs:
-        sorted_colors_indices: The sorted indices of the colors, with the 1st being the most associated color
-    """
-
-    pass
+        ranking_plot_path = os.path.join(eval_folder, f"{key_word}_ranking_plot")
+        compare_rankings_plot(ranking_df, ranking_plot_path, key_word)
 
 
 if __name__ == "__main__":
