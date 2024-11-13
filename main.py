@@ -260,6 +260,36 @@ def get_predictions(prompt_style=1, which_model="ViT-B/32"):
     return pred
 
 
+def plot_scores(score_series, plot_path, word, name):
+    """
+    Plots the rankings of the predicted associations according to scores
+    """
+
+    score_df = score_series.to_frame(name="score")
+    colors = pd.read_csv("data/UW_71_color_dict.csv", index_col=0)
+    score_df = pd.DataFrame(score_df)
+    score_df.columns = ["score"]
+    score_df["color_index"] = score_df.index
+    score_df = score_df.merge(colors, left_on="color_index", right_on="index")
+    score_df["color_index"] = score_df["color_index"].astype(str)
+    score_df = score_df.sort_values(by="score", ascending=False).reset_index(drop=True)
+
+    # Bar plot with colors
+    plt.figure(figsize=(8, 8))
+    plt.bar(
+        score_df["color_index"],
+        score_df["score"],
+        color=score_df["hex"],
+        label="Score",
+    )
+    plt.xlabel("Color")
+    plt.ylabel(f"Score")
+    plt.xticks([])
+    plt.title(f"{name} scores for {word}")
+    plt.savefig(plot_path, format="png", dpi=300)
+    plt.close()
+
+
 def compare_rankings_plot(ranking_df, plot_path_prefix, word):
     """
     Plots the comparison of the rankings of the ground truth and predicted rankings.
@@ -333,8 +363,8 @@ def evaluate_model(prompt_style=1, which_model="ViT-B/32"):
     Inputs:
         prompt_style: The prompt style to evaluate
     """
-
-    eval_folder = f"./output/evaluation/test_{prompt_style}_eval/"
+    model_name = which_model.replace("/", "_").replace("-", "_")
+    eval_folder = f"./output/evaluation/{model_name}/test_{prompt_style}_eval/"
     if not os.path.exists(eval_folder):
         os.makedirs(eval_folder)
 
@@ -343,6 +373,18 @@ def evaluate_model(prompt_style=1, which_model="ViT-B/32"):
     pred = get_predictions(prompt_style, which_model)
 
     for key_word in key_words:
+        plot_scores(
+            gt.T[key_word],
+            os.path.join(eval_folder, f"{key_word}_gt_scores.png"),
+            key_word,
+            "Ground truth",
+        )
+        plot_scores(
+            pred.T[key_word],
+            os.path.join(eval_folder, f"{key_word}_pred_scores.png"),
+            key_word,
+            "Predicted",
+        )
         # Get the rankings of the ground truth and predicted associations
         gt_rankings = gt.loc[key_word].sort_values(ascending=False)
         pred_rankings = pred.loc[key_word].sort_values(ascending=False)
@@ -439,8 +481,8 @@ def evaluation_metrics(prompt_style=1, which_model="ViT-B/32"):
 
 
 if __name__ == "__main__":
-    evaluation_metrics(prompt_style=1, which_model="ViT-B/32")
-    # evaluate_model(prompt_style=1, which_model="ViT-B/32")
+    # evaluation_metrics(prompt_style=1, which_model="ViT-B/32")
+    evaluate_model(prompt_style=1, which_model="ViT-B/32")
     # perform_test(test_num=3, which_model="ViT-B/32")
     # generate_text_prompts(test=4)
     # gen_imgs()
