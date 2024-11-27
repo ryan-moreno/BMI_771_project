@@ -123,7 +123,7 @@ def encode_text_and_compute_similarity(text_prompts, image_encoding, processor, 
         #llm_model.config._name_or_path = 'meta-llama/Meta-Llama-3-8B-Instruct' #  Workaround for LLM2VEC
         #l2v = LLM2Vec(llm_model, tokenizer, pooling_mode="mean", max_length=512, doc_max_length=512)
         #inputs = l2v.encode(text_prompts, convert_to_tensor=True).to(device)
-        tokenizer = CLIPTokenizer.from_pretrained(model_name)  # Load tokenizer for text
+        tokenizer = processor.tokenizer  # Load tokenizer for text
         inputs = tokenizer(text_prompts, return_tensors="pt", padding=True, truncation=True)  # Tokenize text
         inputs = inputs.to(device)
         with torch.no_grad():
@@ -291,6 +291,7 @@ def perform_test(test_num=1, which_model="ViT-B/32", images_path="./output/image
         image_path = os.path.join(images_path, image)
         image_name = image.split(".")[0]
         image_encoding = encode_image(image_path, processor=processor, model=model, model_name=model_name)
+        print("Image Encoding Shape:", image_encoding.shape)
         cosine_similarities = encode_text_and_compute_similarity(
             text_prompts, image_encoding, processor=processor, model=model, model_name=model_name
         )
