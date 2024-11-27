@@ -9,6 +9,7 @@ import torch.nn.functional as F
 import torch
 from transformers import CLIPProcessor, CLIPModel, AutoModel, AutoTokenizer, AutoConfig
 from transformers import CLIPImageProcessor
+from transformers import CLIPTokenizer
 from llm2vec import LLM2Vec
 import matplotlib.pyplot as plt
 from scipy.stats import pearsonr
@@ -122,7 +123,7 @@ def encode_text_and_compute_similarity(text_prompts, image_encoding, processor, 
         #llm_model.config._name_or_path = 'meta-llama/Meta-Llama-3-8B-Instruct' #  Workaround for LLM2VEC
         #l2v = LLM2Vec(llm_model, tokenizer, pooling_mode="mean", max_length=512, doc_max_length=512)
         #inputs = l2v.encode(text_prompts, convert_to_tensor=True).to(device)
-        tokenizer = AutoTokenizer.from_pretrained(model_name)  # Load tokenizer for text
+        tokenizer = CLIPTokenizer.from_pretrained(model_name)  # Load tokenizer for text
         inputs = tokenizer(text_prompts, return_tensors="pt", padding=True, truncation=True)  # Tokenize text
         inputs = inputs.to(device)
         with torch.no_grad():
