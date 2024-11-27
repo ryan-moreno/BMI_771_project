@@ -16,7 +16,7 @@ from scipy.stats import pearsonr
 from scipy.stats import wasserstein_distance
 from scipy.stats import spearmanr
 
-# need to install 
+# need to install
 # pip install transformers
 # pip install torch
 # pip install matplotlib
@@ -29,28 +29,28 @@ from scipy.stats import spearmanr
 
 # citation for llm2vec
 # @inproceedings{
-#llm2vec,
-#title={{LLM2V}ec: Large Language Models Are Secretly Powerful Text Encoders},
-#author={Parishad BehnamGhader and Vaibhav Adlakha and Marius Mosbach and Dzmitry Bahdanau and Nicolas Chapados and Siva Reddy},
-#booktitle={First Conference on Language Modeling},
-#year={2024},
-#url={https://openreview.net/forum?id=IW1PR7vEBf}
-#}
+# llm2vec,
+# title={{LLM2V}ec: Large Language Models Are Secretly Powerful Text Encoders},
+# author={Parishad BehnamGhader and Vaibhav Adlakha and Marius Mosbach and Dzmitry Bahdanau and Nicolas Chapados and Siva Reddy},
+# booktitle={First Conference on Language Modeling},
+# year={2024},
+# url={https://openreview.net/forum?id=IW1PR7vEBf}
+# }
 
 # citation for microsoft/LLM2CLIP-Openai-B-16
-#@misc{huang2024llm2clippowerfullanguagemodel,
-#      title={LLM2CLIP: Powerful Language Model Unlock Richer Visual Representation}, 
+# @misc{huang2024llm2clippowerfullanguagemodel,
+#      title={LLM2CLIP: Powerful Language Model Unlock Richer Visual Representation},
 #      author={Weiquan Huang and Aoqi Wu and Yifan Yang and Xufang Luo and Yuqing Yang and Liang Hu and Qi Dai and Xiyang Dai and Dongdong Chen and Chong Luo and Lili Qiu},
 #      year={2024},
 #      eprint={2411.04997},
 #      archivePrefix={arXiv},
 #      primaryClass={cs.CV},
-#      url={https://arxiv.org/abs/2411.04997}, 
-#}
+#      url={https://arxiv.org/abs/2411.04997},
+# }
 # https://huggingface.co/microsoft/LLM2CLIP-Openai-B-16
 
 # TODO: perhaps use this model instead of the one from microsoft if microsoft one is too slow or difficult to use
-# https://huggingface.co/Salesforce/blip-vqa-base > may be easier to execute on 
+# https://huggingface.co/Salesforce/blip-vqa-base > may be easier to execute on
 
 NUM_COLOR_PATCHES = 71
 
@@ -71,9 +71,14 @@ def main_func():
     fun_handles = {}
     run_tests(args.function_name, fun_handles)
 
+
 # use MPS if available else use cuda if available else use cpu
-device = torch.device("mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu")
-#device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+device = torch.device(
+    "mps"
+    if torch.backends.mps.is_available()
+    else "cuda" if torch.cuda.is_available() else "cpu"
+)
+
 
 def get_model_name(model="ViT-B/32"):
     # List of different CLIP models you can use
@@ -81,7 +86,7 @@ def get_model_name(model="ViT-B/32"):
         "ViT-B/32": "openai/clip-vit-base-patch32",
         "ViT-B/16": "openai/clip-vit-base-patch16",
         "ViT-L/14": "openai/clip-vit-large-patch14",
-        "Microsoft/LLM2CLIP": "microsoft/LLM2CLIP-Openai-B-16"
+        "Microsoft/LLM2CLIP": "microsoft/LLM2CLIP-Openai-B-16",
         # Add more models as needed
         # maybe try this from microsoft https://huggingface.co/microsoft/Phi-3.5-vision-instruct
         # and this from microsoft https://huggingface.co/microsoft/Florence-2-large
@@ -94,39 +99,50 @@ def get_model_name(model="ViT-B/32"):
 def encode_image(image_path, processor, model, model_name):
     image = Image.open(image_path)
     if "Openai-B-16" in model_name:
-        input_pxls = processor(images=image, return_tensors="pt").pixel_values.to(device)
+        input_pxls = processor(images=image, return_tensors="pt").pixel_values.to(
+            device
+        )
         with torch.no_grad():
             image_embeddings = model.get_image_features(input_pxls)
     else:
         inputs = processor(images=image, return_tensors="pt")  # Preprocess
         inputs = inputs.to(device)
         with torch.no_grad():
-            image_embeddings = model.get_image_features(**inputs)  # Get image embeddings
+            image_embeddings = model.get_image_features(
+                **inputs
+            )  # Get image embeddings
     return image_embeddings
 
 
-def encode_text_and_compute_similarity(text_prompts, image_encoding, processor, model, model_name):
+def encode_text(text_prompts, processor, model, model_name):
     if "Openai-B-16" in model_name:
         # not sure how to encode text prompts for this model - I posed a question on the huggingface forum
         # link to forum https://huggingface.co/microsoft/LLM2CLIP-Openai-B-16/discussions/3#6746b462763c2aa67b49ce3c
         # maybe can read https://huggingface.co/microsoft/LLM2CLIP-Openai-B-16/blob/main/configuration_clip.py and magically figure it out
-        llm_model_name = 'microsoft/LLM2CLIP-Llama-3-8B-Instruct-CC-Finetuned'
-        config = AutoConfig.from_pretrained(
-            llm_model_name, trust_remote_code=True
-        )
+
+        llm_model_name = "microsoft/LLM2CLIP-Llama-3-8B-Instruct-CC-Finetuned"
+        config = AutoConfig.from_pretrained(llm_model_name, trust_remote_code=True)
         llm_model = AutoModel.from_pretrained(
-            llm_model_name, 
-            torch_dtype=torch.bfloat16, 
-            config=config, 
+            llm_model_name,
+            torch_dtype=torch.bfloat16,
+            config=config,
             trust_remote_code=True,
-            device_map="auto"
-            )
+        )
         tokenizer = AutoTokenizer.from_pretrained(llm_model_name)
-        llm_model.config._name_or_path = 'meta-llama/Meta-Llama-3-8B-Instruct' #  Workaround for LLM2VEC
-        l2v = LLM2Vec(llm_model, tokenizer, pooling_mode="mean", max_length=512, doc_max_length=512)
+        llm_model.config._name_or_path = (
+            "meta-llama/Meta-Llama-3-8B-Instruct"  #  Workaround for LLM2VEC
+        )
+        l2v = LLM2Vec(
+            llm_model,
+            tokenizer,
+            pooling_mode="mean",
+            max_length=512,
+            doc_max_length=512,
+        )
         inputs = l2v.encode(text_prompts, convert_to_tensor=True).to(device)
         with torch.no_grad():
-            text_embeddings = model.get_text_features(**inputs)  # Get text embeddings
+            text_embeddings = model.get_text_features(inputs)  # Get text embeddings
+            text_features /= text_features.norm(dim=-1, keepdim=True)
     else:
         # Encode text prompts
         inputs = processor(
@@ -136,6 +152,10 @@ def encode_text_and_compute_similarity(text_prompts, image_encoding, processor, 
         with torch.no_grad():
             text_embeddings = model.get_text_features(**inputs)
 
+    return text_embeddings
+
+
+def compute_image_text_similarity(text_embeddings, image_encoding):
     # normalize the image encoding and text embeddings (L2 normalization) TODO: this may not be needed because I believe CLIP does this already
     image_encoding = F.normalize(image_encoding, p=2, dim=-1)
     text_embeddings = F.normalize(text_embeddings, p=2, dim=-1)
@@ -166,13 +186,6 @@ def read_text_prompts(test=1):
             text_prompts.append(line.strip())
     # print(text_prompts)
     return text_prompts
-
-
-"""
-image_path = 'your_image.jpg'
-image_encoding = encode_image(image_path)
-print("Image Encoding Shape:", image_encoding.shape)
-"""
 
 
 def gen_imgs():
@@ -269,40 +282,55 @@ def perform_test(test_num=1, which_model="ViT-B/32", images_path="./output/image
     )  # this will be used to save the data to the correct folder later
 
     model_name = get_model_name(which_model)
-    
+
     if "Openai-B-16" in model_name:
         # % code attribution: https://huggingface.co/microsoft/LLM2CLIP-Openai-B-16
         processor = CLIPImageProcessor.from_pretrained("openai/clip-vit-base-patch16")
-        model = AutoModel.from_pretrained(
-            model_name, 
-            torch_dtype=torch.bfloat16,
-            trust_remote_code=True
-            ).to(device).eval()
+        model = (
+            AutoModel.from_pretrained(
+                model_name, torch_dtype=torch.bfloat16, trust_remote_code=True
+            )
+            .to(device)
+            .eval()
+        )
     else:
         processor = CLIPProcessor.from_pretrained(model_name)
         model = CLIPModel.from_pretrained(model_name)
         model.to(device)
-    text_prompts = read_text_prompts(test_num)
+
     results_df = pd.DataFrame(columns=list(map(str, range(1, NUM_COLOR_PATCHES + 1))))
-    
+
+    # Compute text embeddings
+    text_prompts = read_text_prompts(test_num)
+    text_embeddings = encode_text(
+        text_prompts, processor=processor, model=model, model_name=model_name
+    )
+
     # get each image in the images folder
     for image in os.listdir(images_path):
         image_path = os.path.join(images_path, image)
         image_name = image.split(".")[0]
-        image_encoding = encode_image(image_path, processor=processor, model=model, model_name=model_name)
+        image_encoding = encode_image(
+            image_path, processor=processor, model=model, model_name=model_name
+        )
         print("Image Encoding Shape:", image_encoding.shape)
-        cosine_similarities = encode_text_and_compute_similarity(
-            text_prompts, image_encoding, processor=processor, model=model, model_name=model_name
+
+        cosine_similarities = compute_image_text_similarity(
+            text_embeddings,
+            image_encoding,
+            processor=processor,
+            model=model,
+            model_name=model_name,
         )
         results_df[image_name] = cosine_similarities.cpu().numpy().flatten()
+
         if device == "cuda":
             torch.cuda.empty_cache()
-        # print(f"Image: {image}")
-        # print("Cosine Similarities:", cosine_similarities)
+
     # Label indices of results_df with key words
     key_words, _ = get_words_and_associations()
     assert len(key_words) == len(results_df)
-    
+
     results_df.index = key_words
     folder_to_save = (
         f"./output/cosine_similarities/{model_folder}/test_{test_num}_scores/"
@@ -562,7 +590,7 @@ def evaluation_metrics(prompt_style=1, which_model="ViT-B/32"):
 
 if __name__ == "__main__":
     # evaluation_metrics(prompt_style=1, which_model="ViT-B/32")
-    #evaluate_model(prompt_style=1, which_model="ViT-B/32")
+    # evaluate_model(prompt_style=1, which_model="ViT-B/32")
     perform_test(test_num=1, which_model="Microsoft/LLM2CLIP")
     # generate_text_prompts(test=4)
     # gen_imgs()
