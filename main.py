@@ -16,42 +16,6 @@ from scipy.stats import pearsonr
 from scipy.stats import wasserstein_distance
 from scipy.stats import spearmanr
 
-# need to install
-# pip install transformers
-# pip install torch
-# pip install matplotlib
-# pip install pandas
-# pip install scipy
-# pip install numpy
-# pip install pillow
-# pip install llm2vec
-# pip install flash-attn --no-build-isolation
-
-# citation for llm2vec
-# @inproceedings{
-# llm2vec,
-# title={{LLM2V}ec: Large Language Models Are Secretly Powerful Text Encoders},
-# author={Parishad BehnamGhader and Vaibhav Adlakha and Marius Mosbach and Dzmitry Bahdanau and Nicolas Chapados and Siva Reddy},
-# booktitle={First Conference on Language Modeling},
-# year={2024},
-# url={https://openreview.net/forum?id=IW1PR7vEBf}
-# }
-
-# citation for microsoft/LLM2CLIP-Openai-B-16
-# @misc{huang2024llm2clippowerfullanguagemodel,
-#      title={LLM2CLIP: Powerful Language Model Unlock Richer Visual Representation},
-#      author={Weiquan Huang and Aoqi Wu and Yifan Yang and Xufang Luo and Yuqing Yang and Liang Hu and Qi Dai and Xiyang Dai and Dongdong Chen and Chong Luo and Lili Qiu},
-#      year={2024},
-#      eprint={2411.04997},
-#      archivePrefix={arXiv},
-#      primaryClass={cs.CV},
-#      url={https://arxiv.org/abs/2411.04997},
-# }
-# https://huggingface.co/microsoft/LLM2CLIP-Openai-B-16
-
-# TODO: perhaps use this model instead of the one from microsoft if microsoft one is too slow or difficult to use
-# https://huggingface.co/Salesforce/blip-vqa-base > may be easier to execute on
-
 NUM_COLOR_PATCHES = 71
 
 
@@ -87,9 +51,6 @@ def get_model_name(model="ViT-B/32"):
         "ViT-B/16": "openai/clip-vit-base-patch16",
         "ViT-L/14": "openai/clip-vit-large-patch14",
         "Microsoft/LLM2CLIP": "microsoft/LLM2CLIP-Openai-B-16",
-        # Add more models as needed
-        # maybe try this from microsoft https://huggingface.co/microsoft/Phi-3.5-vision-instruct
-        # and this from microsoft https://huggingface.co/microsoft/Florence-2-large
     }
     # Load the CLIP model
     model_name = models[model]
@@ -116,10 +77,6 @@ def encode_image(image_path, processor, model, model_name):
 
 def encode_text(text_prompts, processor, model, model_name):
     if "Openai-B-16" in model_name:
-        # not sure how to encode text prompts for this model - I posed a question on the huggingface forum
-        # link to forum https://huggingface.co/microsoft/LLM2CLIP-Openai-B-16/discussions/3#6746b462763c2aa67b49ce3c
-        # maybe can read https://huggingface.co/microsoft/LLM2CLIP-Openai-B-16/blob/main/configuration_clip.py and magically figure it out
-
         llm_model_name = "microsoft/LLM2CLIP-Llama-3-8B-Instruct-CC-Finetuned"
         config = AutoConfig.from_pretrained(llm_model_name, trust_remote_code=True)
         llm_model = AutoModel.from_pretrained(
