@@ -356,10 +356,10 @@ def plot_scores(score_series, plot_path, word, name):
         color=score_df["hex"],
         label="Score",
     )
-    plt.xlabel("Color")
-    plt.ylabel(f"Score")
+    plt.xlabel("Color", fontsize=25)
+    plt.ylabel(f"Score", fontsize=25)
     plt.xticks([])
-    plt.title(f"{name} scores for {word}")
+    plt.title(f"{name} scores for {word}", fontsize=30)
     plt.savefig(plot_path, format="png", dpi=300)
     plt.close()
 
@@ -395,9 +395,12 @@ def compare_rankings_plot(ranking_df, plot_path_prefix, word):
     )
     plt.gca().invert_xaxis()
     plt.gca().invert_yaxis()
-    plt.xlabel("Ground Truth Rankings")
-    plt.ylabel("Predicted Rankings")
-    plt.title(f"Comparison of rankings for {word} (colored by ground truth rankings)")
+    plt.xlabel("Ground Truth Rankings", fontsize=25)
+    plt.ylabel("Predicted Rankings", fontsize=25)
+    plt.title(
+        f"Comparison of rankings for {word}\n(colored by ground truth rankings)",
+        fontsize=30,
+    )
     plt.legend()
     plt.savefig(f"{plot_path_prefix}_by_gt.png", format="png", dpi=300)
     plt.close()
@@ -422,9 +425,12 @@ def compare_rankings_plot(ranking_df, plot_path_prefix, word):
 
     plt.gca().invert_xaxis()
     plt.gca().invert_yaxis()
-    plt.xlabel("Ground Truth Rankings")
-    plt.ylabel("Predicted Rankings")
-    plt.title(f"Comparison of rankings for {word} (colored by predicted rankings)")
+    plt.xlabel("Ground Truth Rankings", fontsize=25)
+    plt.ylabel("Predicted Rankings", fontsize=25)
+    plt.title(
+        f"Comparison of rankings for {word}\n(colored by predicted rankings)",
+        fontsize=30,
+    )
     plt.legend()
     plt.savefig(f"{plot_path_prefix}_by_pred.png", format="png", dpi=300)
     plt.close()
