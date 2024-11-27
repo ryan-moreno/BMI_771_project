@@ -1,5 +1,23 @@
 # BMI_771_project
 
+## Usage
+
+```{bash}
+python main.py 
+    --short_model_name [SHORT_MODEL_NAME]
+    --text_prompt_style [PROMPT_STYLE_INT]
+    [LIST_OF_TASKS]
+```
+
+Example:
+
+```{bash}
+python main.py 
+    --short_model_name Microsoft/LLM2CLIP
+    --text_prompt_style 1
+    run_model analyze_results
+```
+
 ## Models and citations
 
 ### ViT-B/32
@@ -43,10 +61,7 @@
     }
     ```
 
-    -  Issues encoding text prompts
-       -  [Posted Huggingface forum question](https://huggingface.co/microsoft/LLM2CLIP-Openai-B-16/discussions/3#6746b462763c2aa67b49ce3c)
-       -  [Potential helpful link](https://huggingface.co/microsoft/LLM2CLIP-Openai-B-16/blob/main/configuration_clip.py)
-
+- Model is not intended to handle numbers in text, so text prompt style 4 was not run.
 
 ### Other models to consider
 
@@ -58,7 +73,9 @@
 
 ### Environment requirements
 
-Must install:
+Note that because we're not doing anything computationally intensive, we don't need to use MPS or CUDA. This can just be performed on the CPU.
+
+Python packages:
 
 - transformers, torch, pillow, scipy, llm2vec
 

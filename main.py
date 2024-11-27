@@ -18,33 +18,55 @@ from scipy.stats import spearmanr
 
 NUM_COLOR_PATCHES = 71
 
+# We're not doing anything computationally intensive, so no need to use MPS or CUDA
+# # use MPS if available else use cuda if available else use cpu
+# device = torch.device(
+#     "mps"
+#     if torch.backends.mps.is_available()
+#     else "cuda" if torch.cuda.is_available() else "cpu"
+# )
+
+device = "cpu"
+
 
 def main_func():
-    parser = argparse.ArgumentParser(
-        description="Execute a specific test or all tests."
-    )
+    parser = argparse.ArgumentParser(description="Execute a specific test.")
     parser.add_argument(
-        "function_name",
-        type=str,
+        "--short_model_name",
         nargs="?",
-        default="all",
+        type=str,
+        required=True,
+        choices=["ViT-B/32", "ViT-B/16", "ViT-L/14", "Microsoft/LLM2CLIP"],
         help='Name of the function to test or "all" to execute all the registered functions',
     )
+    parser.add_argument(
+        "--text_prompt_style",
+        nargs="?",
+        type=int,
+        choices=[1, 2, 3, 4, 5],
+        help="What style of text prompt to use",
+    )
+    parser.add_argument(
+        "tasks",
+        type=str,
+        nargs="*",
+        choices=["run_model", "analyze_results"],
+        help="Which tasks to perform",
+    )
+
     args = parser.parse_args()
 
-    fun_handles = {}
-    run_tests(args.function_name, fun_handles)
+    for task in args.tasks:
+        if task == "run_model":
+            evaluate_model_color_choice_task(
+                args.text_prompt_style, args.short_model_name
+            )
+        elif task == "analyze_results":
+            evaluate_model(args.text_prompt_style, args.short_model_name)
+            evaluation_metrics(args.text_prompt_style, args.short_model_name)
 
 
-# use MPS if available else use cuda if available else use cpu
-device = torch.device(
-    "mps"
-    if torch.backends.mps.is_available()
-    else "cuda" if torch.cuda.is_available() else "cpu"
-)
-
-
-def get_model_name(model="ViT-B/32"):
+def get_full_model_name(short_model_name="ViT-B/32"):
     # List of different CLIP models you can use
     models = {
         "ViT-B/32": "openai/clip-vit-base-patch32",
@@ -52,8 +74,7 @@ def get_model_name(model="ViT-B/32"):
         "ViT-L/14": "openai/clip-vit-large-patch14",
         "Microsoft/LLM2CLIP": "microsoft/LLM2CLIP-Openai-B-16",
     }
-    # Load the CLIP model
-    model_name = models[model]
+    model_name = models[short_model_name]
     return model_name
 
 
@@ -84,11 +105,9 @@ def encode_text(text_prompts, processor, model, model_name):
             torch_dtype=torch.bfloat16,
             config=config,
             trust_remote_code=True,
-        )
+        ).to(device)
         tokenizer = AutoTokenizer.from_pretrained(llm_model_name)
-        llm_model.config._name_or_path = (
-            "meta-llama/Meta-Llama-3-8B-Instruct"  #  Workaround for LLM2VEC
-        )
+        llm_model.config._name_or_path = "meta-llama/Meta-Llama-3-8B-Instruct"
         l2v = LLM2Vec(
             llm_model,
             tokenizer,
@@ -98,8 +117,8 @@ def encode_text(text_prompts, processor, model, model_name):
         )
         inputs = l2v.encode(text_prompts, convert_to_tensor=True).to(device)
         with torch.no_grad():
-            text_embeddings = model.get_text_features(inputs)  # Get text embeddings
-            text_features /= text_features.norm(dim=-1, keepdim=True)
+            text_embeddings = model.get_text_features(inputs)
+            text_embeddings /= text_embeddings.norm(dim=-1, keepdim=True)
     else:
         # Encode text prompts
         inputs = processor(
@@ -141,7 +160,6 @@ def read_text_prompts(test=1):
     with open(file_name) as f:
         for line in f:
             text_prompts.append(line.strip())
-    # print(text_prompts)
     return text_prompts
 
 
@@ -199,7 +217,6 @@ def generate_text_prompts(test=1):
         # this one will be different in that every concept will have multiple prompts
         # for 0 to 1 in .1 increments
         tentative_associations = np.linspace(0, 1, 11)
-        # print(tentative_associations)
         for i in range(len(key_words)):
             for j in range(len(tentative_associations)):
                 percentage = round(tentative_associations[j], ndigits=2)
@@ -230,37 +247,41 @@ def generate_text_prompts(test=1):
     # return text_prompts
 
 
-def perform_test(test_num=1, which_model="ViT-B/32", images_path="./output/images/"):
+def evaluate_model_color_choice_task(
+    text_prompt_style=1, short_model_name="ViT-B/32", images_path="./output/images/"
+):
+    print(
+        f"Evaluating model {short_model_name} with text prompt style {text_prompt_style}"
+    )
+
     # Check and set device to MPS
     print(f"Using device: {device}")
     # generate a folder name based on the model name but without the slashes or dashes
-    model_folder = which_model.replace("/", "_").replace(
+    model_folder = short_model_name.replace("/", "_").replace(
         "-", "_"
     )  # this will be used to save the data to the correct folder later
 
-    model_name = get_model_name(which_model)
+    full_model_name = get_full_model_name(short_model_name)
 
-    if "Openai-B-16" in model_name:
+    if "Openai-B-16" in full_model_name:
         # % code attribution: https://huggingface.co/microsoft/LLM2CLIP-Openai-B-16
         processor = CLIPImageProcessor.from_pretrained("openai/clip-vit-base-patch16")
         model = (
-            AutoModel.from_pretrained(
-                model_name, torch_dtype=torch.bfloat16, trust_remote_code=True
-            )
+            AutoModel.from_pretrained(full_model_name, trust_remote_code=True)
             .to(device)
             .eval()
         )
     else:
-        processor = CLIPProcessor.from_pretrained(model_name)
-        model = CLIPModel.from_pretrained(model_name)
+        processor = CLIPProcessor.from_pretrained(full_model_name)
+        model = CLIPModel.from_pretrained(full_model_name)
         model.to(device)
 
     results_df = pd.DataFrame(columns=list(map(str, range(1, NUM_COLOR_PATCHES + 1))))
 
     # Compute text embeddings
-    text_prompts = read_text_prompts(test_num)
+    text_prompts = read_text_prompts(text_prompt_style)
     text_embeddings = encode_text(
-        text_prompts, processor=processor, model=model, model_name=model_name
+        text_prompts, processor=processor, model=model, model_name=full_model_name
     )
 
     # get each image in the images folder
@@ -268,21 +289,14 @@ def perform_test(test_num=1, which_model="ViT-B/32", images_path="./output/image
         image_path = os.path.join(images_path, image)
         image_name = image.split(".")[0]
         image_encoding = encode_image(
-            image_path, processor=processor, model=model, model_name=model_name
+            image_path, processor=processor, model=model, model_name=full_model_name
         )
-        print("Image Encoding Shape:", image_encoding.shape)
 
         cosine_similarities = compute_image_text_similarity(
             text_embeddings,
             image_encoding,
-            processor=processor,
-            model=model,
-            model_name=model_name,
         )
         results_df[image_name] = cosine_similarities.cpu().numpy().flatten()
-
-        if device == "cuda":
-            torch.cuda.empty_cache()
 
     # Label indices of results_df with key words
     key_words, _ = get_words_and_associations()
@@ -290,7 +304,7 @@ def perform_test(test_num=1, which_model="ViT-B/32", images_path="./output/image
 
     results_df.index = key_words
     folder_to_save = (
-        f"./output/cosine_similarities/{model_folder}/test_{test_num}_scores/"
+        f"./output/cosine_similarities/{model_folder}/test_{text_prompt_style}_scores/"
     )
     if not os.path.exists(folder_to_save):
         os.makedirs(folder_to_save)
@@ -522,10 +536,6 @@ def evaluation_metrics(prompt_style=1, which_model="ViT-B/32"):
         src, _ = spearmanr(gt_values, pred_values)
         spearman_rank_correlations.append(src)
 
-        # validate order by printing the values
-        # print("for word: ", word, "gt_values: ", gt_values, "pred_values: ", pred_values)
-        # print("PCC: ", r, "SRC: ", src, "TV: ", tv, "EMD: ", emd, "ED: ", ed)
-
     # create a data frame to store the results
     evaluation_metrics_df = pd.DataFrame()
     evaluation_metrics_df["word"] = gt.index
@@ -546,11 +556,4 @@ def evaluation_metrics(prompt_style=1, which_model="ViT-B/32"):
 
 
 if __name__ == "__main__":
-    # evaluation_metrics(prompt_style=1, which_model="ViT-B/32")
-    # evaluate_model(prompt_style=1, which_model="ViT-B/32")
-    perform_test(test_num=1, which_model="Microsoft/LLM2CLIP")
-    # generate_text_prompts(test=4)
-    # gen_imgs()
-    # get_words_and_associations()
-    # check_file_colors()
-    # main_func()
+    main_func()
