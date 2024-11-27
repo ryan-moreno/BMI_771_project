@@ -106,15 +106,23 @@ def encode_image(image_path, processor, model, model_name):
 
 def encode_text_and_compute_similarity(text_prompts, image_encoding, processor, model, model_name):
     if "Openai-B-16" in model_name:
-        llm_model_name = 'microsoft/LLM2CLIP-Llama-3-8B-Instruct-CC-Finetuned'
-        config = AutoConfig.from_pretrained(
-            llm_model_name, trust_remote_code=True
-        )
-        llm_model = AutoModel.from_pretrained(llm_model_name, torch_dtype=torch.bfloat16, config=config, trust_remote_code=True)
-        tokenizer = AutoTokenizer.from_pretrained(llm_model_name)
-        llm_model.config._name_or_path = 'meta-llama/Meta-Llama-3-8B-Instruct' #  Workaround for LLM2VEC
-        l2v = LLM2Vec(llm_model, tokenizer, pooling_mode="mean", max_length=512, doc_max_length=512)
-        inputs = l2v.encode(text_prompts, convert_to_tensor=True).to(device)
+        # trying to adjust memory usage
+        #llm_model_name = 'microsoft/LLM2CLIP-Llama-3-8B-Instruct-CC-Finetuned'
+        #config = AutoConfig.from_pretrained(
+        #    llm_model_name, trust_remote_code=True
+        #)
+        #llm_model = AutoModel.from_pretrained(
+        #    llm_model_name, 
+        #    torch_dtype=torch.bfloat16, 
+        #    config=config, 
+        #    trust_remote_code=True,
+        #    device_map="auto"
+        #    )
+        #tokenizer = AutoTokenizer.from_pretrained(llm_model_name)
+        #llm_model.config._name_or_path = 'meta-llama/Meta-Llama-3-8B-Instruct' #  Workaround for LLM2VEC
+        #l2v = LLM2Vec(llm_model, tokenizer, pooling_mode="mean", max_length=512, doc_max_length=512)
+        #inputs = l2v.encode(text_prompts, convert_to_tensor=True).to(device)
+        inputs = processor(text=text_prompts, return_tensors="pt", padding=True, truncation=True)
         with torch.no_grad():
             text_embeddings = model.get_text_features(inputs)
     else:
@@ -284,6 +292,8 @@ def perform_test(test_num=1, which_model="ViT-B/32", images_path="./output/image
             text_prompts, image_encoding, processor=processor, model=model, model_name=model_name
         )
         results_df[image_name] = cosine_similarities.cpu().numpy().flatten()
+        if device == "cuda":
+            torch.cuda.empty_cache()
         # print(f"Image: {image}")
         # print("Cosine Similarities:", cosine_similarities)
     # Label indices of results_df with key words
