@@ -107,7 +107,9 @@ def encode_image(image_path, processor, model, model_name):
 
 def encode_text_and_compute_similarity(text_prompts, image_encoding, processor, model, model_name):
     if "Openai-B-16" in model_name:
-        # trying to adjust memory usage
+        # not sure how to encode text prompts for this model - I posed a question on the huggingface forum
+        # link to forum https://huggingface.co/microsoft/LLM2CLIP-Openai-B-16/discussions/3#6746b462763c2aa67b49ce3c
+        # maybe can read https://huggingface.co/microsoft/LLM2CLIP-Openai-B-16/blob/main/configuration_clip.py and magically figure it out
         #llm_model_name = 'microsoft/LLM2CLIP-Llama-3-8B-Instruct-CC-Finetuned'
         #config = AutoConfig.from_pretrained(
         #    llm_model_name, trust_remote_code=True
@@ -123,9 +125,7 @@ def encode_text_and_compute_similarity(text_prompts, image_encoding, processor, 
         #llm_model.config._name_or_path = 'meta-llama/Meta-Llama-3-8B-Instruct' #  Workaround for LLM2VEC
         #l2v = LLM2Vec(llm_model, tokenizer, pooling_mode="mean", max_length=512, doc_max_length=512)
         #inputs = l2v.encode(text_prompts, convert_to_tensor=True).to(device)
-        tokenizer = processor.tokenizer  # Load tokenizer for text
-        inputs = tokenizer(text_prompts, return_tensors="pt", padding=True, truncation=True)  # Tokenize text
-        inputs = inputs.to(device)
+        inputs = processor(text=text_prompts, return_tensors="pt", padding=True, truncation=True)
         with torch.no_grad():
             text_embeddings = model.get_text_features(**inputs)  # Get text embeddings
     else:
@@ -273,7 +273,8 @@ def perform_test(test_num=1, which_model="ViT-B/32", images_path="./output/image
     
     if "Openai-B-16" in model_name:
         # % code attribution: https://huggingface.co/microsoft/LLM2CLIP-Openai-B-16
-        processor = CLIPImageProcessor.from_pretrained("openai/clip-vit-base-patch16")
+        #processor = CLIPImageProcessor.from_pretrained("openai/clip-vit-base-patch16")
+        processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch16")
         model = AutoModel.from_pretrained(
             model_name, 
             torch_dtype=torch.bfloat16,
