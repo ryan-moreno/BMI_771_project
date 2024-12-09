@@ -349,12 +349,19 @@ def plot_scores(score_series, plot_path, word, name):
 
     # Bar plot with colors
     plt.figure(figsize=(8, 8))
-    plt.bar(
+    bars = plt.bar(
         score_df["color_index"],
         score_df["score"],
         color=score_df["hex"],
         label="Score",
     )
+
+    # Put a gray edge around the white bar
+    white_bar_indices = score_df[score_df["hex"] == "#ffffff"].index
+    for white_bar_index in white_bar_indices:
+        bars[white_bar_index].set_edgecolor("black")
+        bars[white_bar_index].set_linewidth(1)
+
     plt.xlabel("Color", fontsize=25)
     plt.ylabel(f"Score", fontsize=25)
     plt.xticks([])
@@ -407,13 +414,20 @@ def compare_rankings_plot(ranking_df, plot_path_prefix, word):
     ## Plot, ordered by Pred
     bar_lengths = NUM_COLOR_PATCHES - ranking_df["gt_ranking"].astype(int)
     plt.figure(figsize=(8, 8))
-    plt.barh(
+    bars = plt.barh(
         ranking_df["pred_ranking"].astype(int),
         bar_lengths,
         left=ranking_df["gt_ranking"].astype(int),
         color=ranking_df["hex"],
         label="Rank Comparison",
     )
+
+    # Put a gray edge around the white bar
+    white_bar_indices = ranking_df[ranking_df["hex"] == "#ffffff"].index
+    for white_bar_index in white_bar_indices:
+        bars[white_bar_index].set_edgecolor("black")
+        bars[white_bar_index].set_linewidth(1)
+
     plt.plot(
         [1, 71],
         [1, 71],
