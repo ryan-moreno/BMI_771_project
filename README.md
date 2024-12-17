@@ -1,5 +1,8 @@
 # BMI_771_project
 
+## Final Report 
+Our final report write up can be found in our main repo as [SemanticColorDiscriminability_Final_Report_submit.pdf)](./SemanticColorDiscriminability_Final_Report_submit.pdf)
+
 ## Experiments
 To execute experiments run
 
